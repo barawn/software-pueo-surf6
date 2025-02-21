@@ -4,3 +4,6 @@
 [submodule "pueo-utils"]
 	path = pueo-utils
 	url = https://github.com/barawn/pueo-utils.git
+[submodule "pyrfdc"]
+	path = pyrfdc
+	url = https://github.com/barawn/pyrfdc.git
