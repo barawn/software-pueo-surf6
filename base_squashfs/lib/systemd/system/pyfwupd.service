@@ -1,0 +1,11 @@
+[Unit]
+Description=PUEO firmware update daemon
+
+[Service]
+ExecStart=/usr/local/bin/pyfwupd.py
+Type=simple
+StandardOutput=journal
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

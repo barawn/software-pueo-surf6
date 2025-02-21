@@ -1,0 +1,46 @@
+#!/bin/bash
+
+MODE="on"
+if [ "$#" -eq 1 ] ; then
+   if [ $1 = "off" ] ; then
+      MODE="off"
+   elif [ $1 != "on" ] ; then
+      echo "usage: development_mode <on|off> (on is default if not given)"
+      exit 1
+   fi
+fi
+
+if [ $MODE = "on" ] ; then
+    # set up networking, even if we don't use it
+    ADDR=`ip addr | grep eth0 | grep inet | awk '{print $2}'`
+    if [ -n "$ADDR" ] ; then
+      echo "IP address already set ($ADDR), skipping"
+    else
+      echo "Setting IP address to 192.168.2.99/24"
+      ip addr add 192.168.2.99/24 dev eth0
+    fi
+
+    # check if ubi is attached
+    if [ -e "/dev/ubi0_0" ] ; then
+       echo "UBI is already attached, skipping"
+    else
+       echo "Attaching /dev/mtd2 to /dev/ubi0"
+       ubiattach -m 2 /dev/ubi_ctrl
+    fi
+
+    # check if ubi is mounted
+    UBIMNT=`df | grep "/dev/ubi0_0" | awk '{print $6}'`
+    if [ -n "$UBIMNT" ] ; then
+       echo "UBI is already mounted ($UBIMNT), skipping"
+    else
+       echo "Mounting UBI at /mnt"
+       mount /dev/ubi0_0 /mnt
+    fi
+else
+    echo "Unmounting UBI from /mnt"
+    umount /mnt
+    echo "Detaching UBI"
+    ubidetach -d 0 /dev/ubi_ctrl
+fi
+
+# for now that's all devmode sets up
