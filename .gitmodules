@@ -1,0 +1,6 @@
+[submodule "pueo-python"]
+	path = pueo-python
+	url = https://github.com/barawn/pueo-python.git
+[submodule "pueo-utils"]
+	path = pueo-utils
+	url = https://github.com/barawn/pueo-utils.git
