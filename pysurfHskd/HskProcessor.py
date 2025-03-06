@@ -131,7 +131,7 @@ class HskProcessor:
             # just reading it
             if self.nextSoft.exists():
                 if not self.nextSoft.is_symlink():
-                    logger.error("%s is not a link! Deleting it!!",
+                    self.logger.error("%s is not a link! Deleting it!!",
                                  self.nextSoft.name)
                     self.nextSoft.unlink()
                 else:
@@ -229,7 +229,7 @@ class HskProcessor:
             if code != self.kReboot and code != self.kTerminate:
                 rpkt = bytearray(5)
                 rpkt[1] = pkt[0]
-                rpkt[0] = hsk.myID
+                rpkt[0] = self.hsk.myID
                 rpkt[2] = 0xFF
                 rpkt[3] = 0
                 rpkt[4] = 0
