@@ -80,7 +80,7 @@ class HskProcessor:
 
     def eStartState(self, pkt):
         if len(pkt) > 5:
-            self.startup.endState = rpkt[4]
+            self.startup.endState = pkt[4]
         rpkt = bytearray(6)
         rpkt[1] = pkt[0]
         rpkt[0] = self.hsk.myID
