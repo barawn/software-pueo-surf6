@@ -135,6 +135,8 @@ class HskProcessor:
                     self.logger.error("%s is not a link! Deleting it!!",
                                  self.nextSoft.name)
                     self.nextSoft.unlink()
+                    linkname = b''
+                    timestamp = b''
                 else:
                     linkname = bytes(self.nextSoft.readlink())
                     timestamp = self._getSoftTimestamp(linkname)
@@ -178,6 +180,7 @@ class HskProcessor:
         else:
             fn = bytes(self.nextFw.readlink())
             rpkt += fn
+            rpkt[3] = len(rpkt[4:])
             cks = (256 - sum(rpkt[4:])) & 0xFF
             rpkt.append(cks)
             self.hsk.sendPacket(rpkt)
