@@ -6,6 +6,7 @@ import os
 import struct
 import selectors
 import signal
+from pathlib import Path
 from pueoTimer import HskTimer
 from signalhandler import SignalHandler
 from pyHskHandler import HskHandler
@@ -56,7 +57,9 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
 addLoggingLevel('TRACE', logging.DEBUG-5)
 addLoggingLevel('DETAIL', logging.INFO-5)
 logger = logging.getLogger(LOG_NAME)
-logging.basicConfig(level=10)
+# I NEED A BETTER WAY OF DOING THIS!
+# BUT THIS IS GOOD ENOUGH FOR NOW
+logging.basicConfig(level=20)
 
 eeprom = PySOCEEPROM(mode='AUTO')
 if eeprom.socid is None:
@@ -64,10 +67,14 @@ if eeprom.socid is None:
     exit(1)
 
 logger.info("starting up with unique ID 0x%2.2x" % eeprom.socid)
+# enable wakeup
+WAKE_PORT_PATH = '/sys/devices/platform/axi/ff010000.serial/tty/ttyPS1/power/wakeup'
+p = Path(WAKE_PORT_PATH)
+if p.exists():
+    p.write_text('enabled')
 
-    
 zynq = PyZynqMP()
-    
+
 surf = PueoSURF(WBSPI.find_device('osu,surf6revB'),'SPI')
 clk = SURF6Clock()
 clk.trenzClock.powerdown(True)
