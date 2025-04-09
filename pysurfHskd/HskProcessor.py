@@ -4,6 +4,7 @@ from subprocess import Popen, PIPE, TimeoutExpired
 from pathlib import Path
 import pickle
 import struct
+from threading import Timer
 
 class HskProcessor:
     kReboot = 0xFF
@@ -90,6 +91,28 @@ class HskProcessor:
         rpkt[4] = self.startup.state
         rpkt[5] = (256 - rpkt[4]) & 0xFF
         self.hsk.sendPacket(rpkt)
+
+    def eSleep(self, pkt):
+        rpkt[1] = pkt[0]
+        rpkt[0] = self.hsk.myID
+        rpkt[2] = 33
+        rpkt[3] = 1
+        if pkt[3] > 0:
+            if pkt[4] & 0x80:
+                # top bit set means go to sleep now
+                # after X seconds where X is low bits
+                sleepAfterSec = pkt[4] & 0x7F
+                p = Path('/sys/power/state')
+                if p.exists():
+                    def goToSleep():
+                        p.write_text('mem')
+                    t = Timer(sleepAfterSec, goToSleep)
+                    t.start()
+            # do something else
+            
+        rpkt[4] = self.sleepMode
+        rpkt[5] = (256 - rpkt[4]) & 0xFF
+        self.hsk.sendPacket(rpkt)            
         
     @staticmethod
     def _getSoftTimestamp(fn: bytes):
@@ -262,12 +285,14 @@ class HskProcessor:
             17 : self.eVolts,
             18 : self.eIdentify,
             32 : self.eStartState,
+            33 : self.eSleep,
             129 : self.eFwNext,
             135 : self.eSoftNext,
             189 : self.eJournal,
             190 : self.eDownloadMode,
             191 : self.eRestart
         }        
+        self.sleepMode = 0
         self.hsk = hsk
         self.zynq = zynq
         self.eeprom = eeprom
