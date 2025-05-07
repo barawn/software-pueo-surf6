@@ -82,7 +82,7 @@ clk.trenzClock.powerdown(True)
 clkrst = GPIO(GPIO.get_gpio_pin(3),'out')
 
 # get the rackclk indicator
-rackok = GPIO(GPIO.get_gpio_pin(0), 'in')
+rackok = GPIO(GPIO.get_gpio_pin(4), 'in')
 
 # create the selector first
 sel = selectors.DefaultSelector()
@@ -196,8 +196,8 @@ while not handler.terminate:
         if rackok.read() == 0:
             logger.info("RACKCLK watchdog has triggered!!")
             # Removing the current FW ensures that it gets reprogrammed.
-            if self.currentFw.exists():
-                self.currentFw.remove()
+            if currentFw.exists():
+                currentFw.remove()
             handler.set_terminate()
 
 logger.info("Terminating!")
