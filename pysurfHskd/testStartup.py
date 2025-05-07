@@ -197,7 +197,7 @@ while not handler.terminate:
             logger.info("RACKCLK watchdog has triggered!!")
             # Removing the current FW ensures that it gets reprogrammed.
             if currentFw.exists():
-                currentFw.remove()
+                currentFw.unlink()
             handler.set_terminate()
 
 logger.info("Terminating!")
