@@ -74,11 +74,15 @@ if p.exists():
     p.write_text('enabled')
 
 zynq = PyZynqMP()
+currentFw = Path(zynq.CURRENT)
 
 surf = PueoSURF(WBSPI.find_device('osu,surf6revB'),'SPI')
 clk = SURF6Clock()
 clk.trenzClock.powerdown(True)
 clkrst = GPIO(GPIO.get_gpio_pin(3),'out')
+
+# get the rackclk indicator
+rackok = GPIO(GPIO.get_gpio_pin(0), 'in')
 
 # create the selector first
 sel = selectors.DefaultSelector()
@@ -155,7 +159,12 @@ except Exception as e:
     logger.error(traceback.format_exc())
     
     handler.set_terminate()    
-    
+
+
+# if watchdog is true, we go boom when rackclk disappears,
+# making sure to eliminate the current firmware to ensure
+# it gets reprogrammed.
+watchdog = False
 # terminate is now inside the handler
 while not handler.terminate:
     events = sel.select()
@@ -170,6 +179,25 @@ while not handler.terminate:
             logger.error("callback threw an exception: %s", repr(e))
             logger.error(traceback.format_exc())
             
+            handler.set_terminate()
+    # NOTE: there's a race worry here, need to think about this.
+    # I probably want to get rid of the null byte generator,
+    # bite the bullet, and add a second gpio-keys interface
+    # picking off GPIO 4. Then when the watchdog runs I can just
+    # have it go psycho up/down/up/down etc. until I see one
+    # of the goddamn events.
+    #
+    # But this isn't a worry right now anyway since we don't sleep!
+    if not watchdog:
+        if startup.state > startup.StartupState.WAIT_CLOCK:
+            logger.info("RACKCLK watchdog is now active!")
+            watchdog = True
+    else:
+        if rackok.read() == 0:
+            logger.info("RACKCLK watchdog has triggered!!")
+            # Removing the current FW ensures that it gets reprogrammed.
+            if self.currentFw.exists():
+                self.currentFw.remove()
             handler.set_terminate()
 
 logger.info("Terminating!")
