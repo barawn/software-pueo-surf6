@@ -24,12 +24,13 @@ class StartupHandler:
         ENABLE_ACLK = 6
         WAIT_PLL_LOCK = 7
         ALIGN_RXCLK = 8
-        LOCATE_EYE = 9
-        TURFIO_LOCK = 10
-        WAIT_TURFIO_LOCKED = 11
-        ENABLE_TRAIN = 12
-        WAIT_TURFIO = 13
-        DISABLE_TRAIN = 14
+        WAIT_CIN_ACTIVE = 9
+        LOCATE_EYE = 10
+        TURFIO_LOCK = 11
+        WAIT_TURFIO_LOCKED = 12
+        ENABLE_TRAIN = 13
+        WAIT_TURFIO = 14
+        STARTUP_FINISH = 254
         STARTUP_FAILURE = 255
 
         def __index__(self) -> int:
@@ -161,35 +162,55 @@ class StartupHandler:
             # this needs to freaking do something if it fails!!
             av = self.surf.align_rxclk()
             self.logger.info("RXCLK aligned at offset %f", av)
+            self.state = self.StartupState.WAIT_CIN_ACTIVE
+            self._runImmediate()
+            return
+        elif self.state == self.StartupState.WAIT_CIN_ACTIVE:
+            if not self.surf.turfio_cin_active:
+                self._runNextTick()
+                return
             self.state = self.StartupState.LOCATE_EYE
             self._runImmediate()
             return
         elif self.state == self.StartupState.LOCATE_EYE:
             # use firmware parameters for this eventually!!!
             eye = self.surf.locate_eyecenter()
+            self.logger.info("Located CIN eye: ", eye)
             self.surf.setDelay(eye[0])
             self.surf.turfioSetOffset(eye[1])
             self.state = self.StartupState.TURFIO_LOCK
             self._runImmediate()
             return
         elif self.state == self.StartupState.TURFIO_LOCK:
-            self.surf.turfioLock(True)
+            self.surf.turfio_lock_req = 1
             self.state = self.StartupState.WAIT_TURFIO_LOCKED
             self._runImmediate()
             return
         elif self.state == self.StartupState.WAIT_TURFIO_LOCKED:
-            if not self.surf.turfioLocked():
+            if not self.surf.turfio_locked_or_running:
                 self._runNextTick()
                 return
+            # lower lock req, so that bit is now cin_running
+            self.surf_turfio_lock_req = 0
             self.state = self.StartupState.ENABLE_TRAIN
             self._runImmediate()
             return
         elif self.state == self.StartupState.ENABLE_TRAIN:
-            # dangit lookup what to do here
+            self.surf.turfio_train_enable = 1
             self.state = self.StartupState.WAIT_TURFIO
             self._runImmediate()
             return
         elif self.state == self.StartupState.WAIT_TURFIO:
-            # figure out what to do here too!!!
+            # wait until cin becomes active...
+            if not self.surf_turfio_locked_or_running:
+                self._runNextTick()
+                return            
+            self.surf.turfio_train_enable = 0
+            # we're done for now: once this works we'll
+            # add MTS states once a sync is received.
+            self.state = self.StartupState.STARTUP_FINISH
+            self._runImmediate()
+            return
+        elif self.state == self.StartupState.STARTUP_FINISH:
             self._runNextTick()
             return
