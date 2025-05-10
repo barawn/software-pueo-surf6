@@ -162,6 +162,8 @@ class StartupHandler:
             # this needs to freaking do something if it fails!!
             av = self.surf.align_rxclk()
             self.logger.info("RXCLK aligned at offset %f", av)
+            # reset the active indicator
+            self.surf.turfio_cin_active = 0
             self.state = self.StartupState.WAIT_CIN_ACTIVE
             self._runImmediate()
             return
