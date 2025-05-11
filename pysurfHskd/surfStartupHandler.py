@@ -177,10 +177,10 @@ class StartupHandler:
             return
         elif self.state == self.StartupState.LOCATE_EYE:
             # use firmware parameters for this eventually!!!
-            eye = self.surf.locate_eyecenter()
-            self.logger.info("Located CIN eye: ", eye)
-            self.surf.setDelay(eye[0])
-            self.surf.turfioSetOffset(eye[1])
+            delay, bit = self.surf.locate_eyecenter()
+            self.logger.info("Located CIN eye at %f bit %d", delay, bit)
+            self.surf.setDelay(delay)
+            self.surf.turfioSetOffset(bit)
             self.state = self.StartupState.TURFIO_LOCK
             self._runImmediate()
             return
