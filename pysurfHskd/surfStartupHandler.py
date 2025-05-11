@@ -30,6 +30,7 @@ class StartupHandler:
         WAIT_TURFIO_LOCKED = 12
         ENABLE_TRAIN = 13
         WAIT_TURFIO = 14
+        WAIT_SYNC = 15
         STARTUP_FINISH = 254
         STARTUP_FAILURE = 255
 
@@ -192,6 +193,7 @@ class StartupHandler:
             if not self.surf.turfio_locked_or_running:
                 self._runNextTick()
                 return
+            self.logger.info("CIN is locked, waiting for remote to train.")
             # lower lock req, so that bit is now cin_running
             self.surf_turfio_lock_req = 0
             self.state = self.StartupState.ENABLE_TRAIN
@@ -208,10 +210,18 @@ class StartupHandler:
                 self._runNextTick()
                 return            
             self.surf.turfio_train_enable = 0
-            # we're done for now: once this works we'll
-            # add MTS states once a sync is received.
-            self.state = self.StartupState.STARTUP_FINISH
+            self.logger.info("Remote finished training: CIN/COUT/DOUT OK.")
+            self.state = self.StartupState.WAIT_SYNC
             self._runImmediate()
+            return
+        elif self.state == self.StartupState.WAIT_SYNC:
+            if not self.sync_seen:
+                self._runImmediate()
+                return
+            self.logger.info("SYNC has been issued.")
+            # FINISH FOR NOW
+            self.state = self.StartupState.STARTUP_FINISH
+            self._runNextTick()
             return
         elif self.state == self.StartupState.STARTUP_FINISH:
             self._runNextTick()
