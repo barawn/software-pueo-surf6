@@ -195,7 +195,7 @@ class StartupHandler:
                 return
             self.logger.info("CIN is locked, waiting for remote to train.")
             # lower lock req, so that bit is now cin_running
-            self.surf_turfio_lock_req = 0
+            self.surf.turfio_lock_req = 0
             self.state = self.StartupState.ENABLE_TRAIN
             self._runImmediate()
             return
