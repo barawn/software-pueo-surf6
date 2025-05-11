@@ -122,7 +122,7 @@ startup = StartupHandler(LOG_NAME,
                          surf,
                          clk,
                          clkrst,
-                         StartupHandler.StartupState.WAIT_CIN_ACTIVE,
+                         StartupHandler.StartupState.WAIT_SYNC,
                          tickFifo)
 # sigh stupidity
 def runHandler(fd, mask):
