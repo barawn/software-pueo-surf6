@@ -206,7 +206,7 @@ class StartupHandler:
             return
         elif self.state == self.StartupState.WAIT_TURFIO:
             # wait until cin becomes active...
-            if not self.surf_turfio_locked_or_running:
+            if not self.surf.turfio_locked_or_running:
                 self._runNextTick()
                 return            
             self.surf.turfio_train_enable = 0
