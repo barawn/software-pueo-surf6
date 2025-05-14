@@ -29,7 +29,7 @@ class StartupHandler:
         TURFIO_LOCK = 11
         WAIT_TURFIO_LOCKED = 12
         ENABLE_TRAIN = 13
-        WAIT_TURFIO = 14
+        WAIT_LIVE = 14
         WAIT_SYNC = 15
         STARTUP_FINISH = 254
         STARTUP_FAILURE = 255
@@ -201,14 +201,18 @@ class StartupHandler:
             return
         elif self.state == self.StartupState.ENABLE_TRAIN:
             self.surf.turfio_train_enable = 1
-            self.state = self.StartupState.WAIT_TURFIO
+            self.state = self.StartupState.WAIT_LIVE
             self._runImmediate()
             return
-        elif self.state == self.StartupState.WAIT_TURFIO:
-            # wait until cin becomes active...
-            if not self.surf.turfio_locked_or_running:
+        elif self.state == self.StartupState.WAIT_LIVE:
+            # We now just need to check for noop_live.
+            # We don't actually check for running anymore,
+            # because the TURFIO needs to sync us before
+            # it even tries to train. So we just check
+            # live seen.
+            if not self.surf.live_seen:
                 self._runNextTick()
-                return            
+                return
             self.surf.turfio_train_enable = 0
             self.logger.info("Remote finished training: CIN/COUT/DOUT OK.")
             self.state = self.StartupState.WAIT_SYNC
