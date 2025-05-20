@@ -325,10 +325,12 @@ class HskProcessor:
         if st == 0:
             os.system("systemctl stop pyfwupd")
         else:
-            os.unlink("/tmp/pyfwupd.loglevel")
+            ll = Path("/tmp/pyfwupd.loglevel")
+            if ll.exists:
+                ll.unlink()
             if st & 0x80:
                 loglevel = st & 0x7F
-                Path("/tmp/pyfwupd.loglevel").write_text(str(loglevel))
+                ll.write_text(str(loglevel))
             os.system("systemctl start pyfwupd")
         
     def _downloadState(self):
