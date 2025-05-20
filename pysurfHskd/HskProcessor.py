@@ -326,7 +326,7 @@ class HskProcessor:
             os.system("systemctl stop pyfwupd")
         else:
             ll = Path("/tmp/pyfwupd.loglevel")
-            if ll.exists:
+            if ll.exists():
                 ll.unlink()
             if st & 0x80:
                 loglevel = st & 0x7F
