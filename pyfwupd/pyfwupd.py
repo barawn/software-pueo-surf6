@@ -30,6 +30,7 @@ import selectors
 import struct
 import signal
 from pathlib import Path
+from hashlib import md5
 
 LOG_NAME = 'pyfwupd'
 LOG_LEVEL_OVERRIDE = "/tmp/pyfwupd.loglevel"
@@ -39,6 +40,7 @@ else:
     LOG_LEVEL = logging.WARNING
 
 PYFW=b'PYFW'
+PYEX=b'PYEX'
 CURRENT=PyZynqMP.CURRENT
 READBACK_TYPE_PATH=PyZynqMP.READBACK_TYPE_PATH
 READBACK_LEN_PATH=PyZynqMP.READBACK_LEN_PATH
@@ -82,6 +84,31 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
     setattr(logging.getLoggerClass(), methodName, logForLevel)
     setattr(logging, methodName, logToRoot)
 
+# utility functions, from a stackexchange
+# post computing the MD5 iteratively. Originally
+# I had planned on NOT doing this on the file
+# because we can just do it iteratively as
+# the data comes in, but this is smarter since
+# we move the latency to the end. You might
+# need to time.sleep(0.5) at the end if you're
+# checking the MD5.
+def hash_bytestr_iter(bytesiter, hasher, ashexstr=False):
+    for block in bytesiter:
+        hasher.update(block)
+    return hasher.hexdigest() if ashexstr else hasher.digest()
+
+def file_as_blockiter(afile, blocksize=65536):
+    with afile:
+        block = afile.read(blocksize)
+        while len(block) > 0:
+            yield block
+            block = afile.read(blocksize)
+
+def filemd5(fn):
+    return hash_bytestr_iter(file_as_blockiter(open(fn, 'rb')),
+                             hashlib.md5(),
+                             ashexstr=True)
+    
 # Use the xilframe library.
 from ctypes import CDLL, POINTER, c_ubyte, cast
 class Converter:
@@ -130,7 +157,8 @@ if __name__ == "__main__":
     logLevel = LOG_LEVEL - 5*args.verbose
     addLoggingLevel('TRACE', logging.DEBUG - 5)
     addLoggingLevel('DETAIL', logging.INFO - 5)
-    
+    # add one that will always print :)
+    addLoggingLevel('FILE', 100)
     logger = logging.getLogger(LOG_NAME)
     logging.basicConfig(level=logLevel)
         
@@ -180,7 +208,7 @@ if __name__ == "__main__":
     typePath.write_text(state[2])
     
     # start with no file
-    curFile = None    
+    curFile = None
     # start with no horrible errors
     horribleProblem = None
     # open the temporary file...
@@ -233,39 +261,88 @@ if __name__ == "__main__":
                         logger.trace("length:" + str(list(data[4:8])))
                         logger.trace("beginning of fn:" + str(list(data[8:12])))
                         try:
-                            if data[0:4] != PYFW:
+                            if data[0:4] != PYFW and data[0:4] != PYEX:
                                 raise ValueError("communication error: no file, but got " + str(list(data[0:4])))
-                            logger.debug("PYFW okay, unpacking header")
+                            if data[0:4] == PYFW:
+                                mode = PYFW
+                                thisTimeout = None                                
+                                # pyfw's header structure is
+                                # (4 bytes) <- length of file
+                                # (null terminated string) <- filename
+                                # 1 byte checksum of the entire header
+                                logger.debug("PYFW okay, unpacking header")
 
-                            thisLen = struct.unpack(">I", data[4:8])[0]
-                            # index of the null terminator
-                            endFn = data[8:].index(b'\x00') + 8
-                            # now sum through the checksum, which is after the null terminator
-                            # (so in python you add 2 b/c the end slice index is 1 after your final)
-                            cks = sum(data[:endFn+2]) % 256                                
-                            if cks != 0:
-                                logger.error(list(data[:endFn+2]))                                
-                                raise ValueError("checksum failed: %2.2x" % cks)
-                            thisFn = data[8:endFn].decode()
-                            data = data[endFn+2:]
-                            dlen = len(data)
+                                thisLen = struct.unpack(">I", data[4:8])[0]
+                                # index of the null terminator
+                                endFn = data[8:].index(b'\x00') + 8
+                                # now sum through the checksum, which is after the null terminator
+                                # (so in python you add 2 b/c the end slice index is 1 after your final)
+                                cks = sum(data[:endFn+2]) % 256                                
+                                if cks != 0:
+                                    logger.error(list(data[:endFn+2]))                                
+                                    raise ValueError("checksum failed: %2.2x" % cks)
+                                thisFn = data[8:endFn].decode()
+                                data = data[endFn+2:]
+                                dlen = len(data)
+
+                            elif data[0:4] == PYEX:
+                                mode = PYEX
+                                # pyex's header structure is
+                                # (4 bytes) <- length of file
+                                # (4 bytes) <- timeout
+                                # (32 byte null terminated string) <- MD5sum
+                                # (1 byte) <- checksum of the header
+                                # It doesn't need a filename since it's going to be executed
+                                # if the MD5sum matches.
+                                logger.debug("PYEX okay, unpacking header")
+                                thisLen = struct.unpack(">I", data[4:8])[0]
+                                thisTimeout = struct.unpack(">I", data[8:12])[0]
+                                if not thisTimeout
+                                    thisTimeout = None
+                                endFn = data[12:].index(b'\x00') + 12
+                                cks = sum(data[:endFn+2]) % 256
+                                if cks != 0:
+                                    logger.error(list(data[:endFn+2]))
+                                    raise ValueError("checksum failed: %2.2x" % cks)
+                                thisFn = data[12:endFn].decode()
+                                data = data[endFn+2:]
+                                dlen = len(data)
                         except Exception as e:
                             horribleProblem = 2
                             logger.error("First frame failed: " + repr(e))
                             handler.set_terminate()
                             return
                         logger.info("beginning " + thisFn + " len " + str(thisLen))
-                        curFile = [thisFn, thisLen]
+                        curFile = (thisFn, thisLen, thisTimeout, mode)
                     if dlen > curFile[1]:
                         try:
                             # grr curFile[1] is right: it's # of bytes remaining
                             # and b[0:5] grabs the first 5 bytes
                             tempFile.write(data[:curFile[1]])
-                            logger.info("completed file %s" % curFile[0])
                             # close the temporary file
                             tempFile.close()
-                            # move it to its final destination
-                            shutil.move(TMPPATH, curFile[0])
+                            if curFile[3] == PYFW:
+                                # move it to its final destination
+                                shutil.move(TMPPATH, curFile[0])
+                                md5 = filemd5(curFile[0])
+                                logger.file(f'completed {curFile[0]} : md5sum {filemd5(curFile[0])}')
+                            elif curFile[3] == PYEX:
+                                # check its md5
+                                themd5 = filemd5(TMPPATH)
+                                if themd5 == curFile[0]:
+                                    logger.file(f'script {themd5} : MD5 matched, executing.')
+                                    # mark it executable
+                                    Path(TMPPATH).chmod(0o755)
+                                    out = ''
+                                    try:
+                                        p = Popen(TMPPATH, stdin=PIPE, stdout=PIPE)
+                                        out = p.communicate(timeout=curFile[3])[0]
+                                    except TimeoutExpired:
+                                        p.kill()
+                                        out = p.communicate()[0]
+                                    logger.file(out)
+                                else:
+                                    raise ValueError(f'md5sum failed: {themd5} != {curFile[0]}')
                             # and get a new one
                             tempFile = open(TMPPATH, "w+b")
                         except Exception as e:
