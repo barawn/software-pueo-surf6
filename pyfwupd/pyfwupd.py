@@ -15,6 +15,9 @@
 # then eDownloadMode=1). It completes whatever it's doing when
 # it catches a signal.
 
+# THIS IS VERSION 2, WHICH USES LIBXILFRAME.SO
+# INSTEADY OF GODAWFUL HACKY CRAP
+
 from pyzynqmp import Bitstream, PyZynqMP
 from signalhandler import SignalHandler
 from gpio import GPIO 
@@ -26,7 +29,6 @@ import selectors
 
 import struct
 import signal
-from subprocess import Popen, PIPE
 from pathlib import Path
 
 LOG_NAME = 'pyfwupd'
@@ -80,22 +82,29 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
     setattr(logging.getLoggerClass(), methodName, logForLevel)
     setattr(logging, methodName, logToRoot)
 
-# dunno how fast this will be, we'll see
-# some part of me thinks I should write this in the damn driver
-# or do a ctypes ffi call
+# Use the xilframe library.
+from ctypes import CDLL, POINTER, c_ubyte, cast
 class Converter:
-    XILFRAME = "/usr/local/bin/xilframe"
-    XILFRAME_ARGS = "-"
+    XILFRAME = "/usr/local/lib/libxilframe.so"
+    FRAME_SIZE = 95704
+    DATA_SIZE = 49152
+    
     def __init__(self):
-        if not os.access(self.XILFRAME, os.X_OK):
-            raise FileNotFoundError("cannot execute %s" % self.XILFRAME)
-        self.xf = Popen([self.XILFRAME, self.XILFRAME_ARGS],
-                        stdin=PIPE,
-                        stdout=PIPE)
+        if not os.access(self.XILFRAME, os.R_OK):
+            raise FileNotFoundError(f'cannot load {self.XILFRAME}')
+        self.libxf = CDLL(self.XILFRAME)
+        self.xf = self.libxf.xilframe
+        self.xf.restype = None
+        self.xf.argtypes = [ POINTER(c_ubyte), POINTER(c_ubyte) ]
+        self.inbuf = (c_ubyte*self.FRAME_SIZE)()
+        self.inbufp = cast(self.inbuf, POINTER(c_ubyte))
+        self.outbuf = (c_ubyte*self.DATA_SIZE)()
+        self.outbufp = cast(self.outbuf, POINTER(c_ubyte))
 
     def convert(self, fr):
-        self.xf.stdin.write(fr)
-        return self.xf.stdout.read(49152)
+        self.inbuf[0:self.FRAME_SIZE] = fr
+        self.xf(self.inbufp, self.outbufp)
+        return bytes(self.outbuf)    
 
 # this is supertrimmed for PUEO
 class Event:
