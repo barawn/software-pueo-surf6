@@ -297,7 +297,7 @@ if __name__ == "__main__":
                                 logger.debug("PYEX okay, unpacking header")
                                 thisLen = struct.unpack(">I", data[4:8])[0]
                                 thisTimeout = struct.unpack(">I", data[8:12])[0]
-                                if not thisTimeout
+                                if not thisTimeout:
                                     thisTimeout = None
                                 endFn = data[12:].index(b'\x00') + 12
                                 cks = sum(data[:endFn+2]) % 256
