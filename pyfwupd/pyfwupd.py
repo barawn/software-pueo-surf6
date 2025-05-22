@@ -313,7 +313,7 @@ if __name__ == "__main__":
                             handler.set_terminate()
                             return
                         logger.info("beginning " + thisFn + " len " + str(thisLen))
-                        curFile = (thisFn, thisLen, thisTimeout, mode)
+                        curFile = [thisFn, thisLen, thisTimeout, mode]
                     if dlen > curFile[1]:
                         try:
                             # grr curFile[1] is right: it's # of bytes remaining
