@@ -196,6 +196,9 @@ while not handler.terminate:
         if rackok.read() == 0:
             logger.info("RACKCLK watchdog has triggered!!")
             # Removing the current FW ensures that it gets reprogrammed.
+            # Kill the clock.
+            clkrst.write(1)
+            clkrst.write(0)
             if currentFw.exists():
                 currentFw.unlink()
             handler.set_terminate()

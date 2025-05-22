@@ -31,6 +31,7 @@ import struct
 import signal
 from pathlib import Path
 from hashlib import md5
+from subprocess import Popen, PIPE, TimeoutExpired
 
 LOG_NAME = 'pyfwupd'
 LOG_LEVEL_OVERRIDE = "/tmp/pyfwupd.loglevel"
@@ -106,7 +107,7 @@ def file_as_blockiter(afile, blocksize=65536):
 
 def filemd5(fn):
     return hash_bytestr_iter(file_as_blockiter(open(fn, 'rb')),
-                             hashlib.md5(),
+                             md5(),
                              ashexstr=True)
     
 # Use the xilframe library.
@@ -297,7 +298,7 @@ if __name__ == "__main__":
                                 logger.debug("PYEX okay, unpacking header")
                                 thisLen = struct.unpack(">I", data[4:8])[0]
                                 thisTimeout = struct.unpack(">I", data[8:12])[0]
-                                if not thisTimeout
+                                if not thisTimeout:
                                     thisTimeout = None
                                 endFn = data[12:].index(b'\x00') + 12
                                 cks = sum(data[:endFn+2]) % 256
@@ -313,7 +314,7 @@ if __name__ == "__main__":
                             handler.set_terminate()
                             return
                         logger.info("beginning " + thisFn + " len " + str(thisLen))
-                        curFile = (thisFn, thisLen, thisTimeout, mode)
+                        curFile = [thisFn, thisLen, thisTimeout, mode]
                     if dlen > curFile[1]:
                         try:
                             # grr curFile[1] is right: it's # of bytes remaining
@@ -336,7 +337,7 @@ if __name__ == "__main__":
                                     out = ''
                                     try:
                                         p = Popen(TMPPATH, stdin=PIPE, stdout=PIPE)
-                                        out = p.communicate(timeout=curFile[3])[0]
+                                        out = p.communicate(timeout=curFile[2])[0]
                                     except TimeoutExpired:
                                         p.kill()
                                         out = p.communicate()[0]
