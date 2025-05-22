@@ -106,7 +106,7 @@ def file_as_blockiter(afile, blocksize=65536):
 
 def filemd5(fn):
     return hash_bytestr_iter(file_as_blockiter(open(fn, 'rb')),
-                             hashlib.md5(),
+                             md5(),
                              ashexstr=True)
     
 # Use the xilframe library.
