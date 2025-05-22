@@ -337,7 +337,7 @@ if __name__ == "__main__":
                                     out = ''
                                     try:
                                         p = Popen(TMPPATH, stdin=PIPE, stdout=PIPE)
-                                        out = p.communicate(timeout=curFile[3])[0]
+                                        out = p.communicate(timeout=curFile[2])[0]
                                     except TimeoutExpired:
                                         p.kill()
                                         out = p.communicate()[0]
