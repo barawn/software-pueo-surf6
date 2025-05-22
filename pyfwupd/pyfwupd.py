@@ -31,6 +31,7 @@ import struct
 import signal
 from pathlib import Path
 from hashlib import md5
+from subprocess import Popen, PIPE, TimeoutExpired
 
 LOG_NAME = 'pyfwupd'
 LOG_LEVEL_OVERRIDE = "/tmp/pyfwupd.loglevel"
