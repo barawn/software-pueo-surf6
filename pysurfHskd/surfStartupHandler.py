@@ -81,7 +81,7 @@ class StartupHandler:
             id = self.surf.read(0).to_bytes(4,'big')
             if id != b'SURF':
                 self.logger.error("failed identifying SURF: %s", id.hex())
-                self.state == self.StartupState.STARTUP_FAILURE
+                self.state = self.StartupState.STARTUP_FAILURE
                 self._runNextTick()
                 return
             else:
@@ -177,7 +177,13 @@ class StartupHandler:
             return
         elif self.state == self.StartupState.LOCATE_EYE:
             # use firmware parameters for this eventually!!!
-            delay, bit = self.surf.locate_eyecenter()
+            try:
+                delay, bit = self.surf.locate_eyecenter()
+            except Exception as e:
+                surf.logger.error(f'Locating eye center failed! {repr(e)}')
+                self.state = self.StartupState.STARTUP_FAILURE
+                self._runNextTick()
+                return
             self.logger.info("Located CIN eye at %f bit %d", delay, bit)
             self.surf.setDelay(delay)
             self.surf.turfioSetOffset(bit)
