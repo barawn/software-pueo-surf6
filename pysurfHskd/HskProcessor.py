@@ -83,13 +83,14 @@ class HskProcessor:
     def eStartState(self, pkt):
         if len(pkt) > 5:
             self.startup.endState = pkt[4]
-        rpkt = bytearray(6)
+        rpkt = bytearray(7)
         rpkt[1] = pkt[0]
         rpkt[0] = self.hsk.myID
         rpkt[2] = 32
-        rpkt[3] = 1
+        rpkt[3] = 2
         rpkt[4] = self.startup.state
-        rpkt[5] = (256 - rpkt[4]) & 0xFF
+        rpkt[5] = self.startup.endState
+        rpkt[6] = (256 - sum(rpkt[4:])) & 0xFF
         self.hsk.sendPacket(rpkt)
 
     def eSleep(self, pkt):
