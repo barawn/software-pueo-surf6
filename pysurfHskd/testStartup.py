@@ -12,6 +12,7 @@ from signalhandler import SignalHandler
 from pyHskHandler import HskHandler
 from surfStartupHandler import StartupHandler
 from HskProcessor import HskProcessor
+from surfExceptions import StartupException
 
 from pysoceeprom import PySOCEEPROM
 from pyzynqmp import PyZynqMP
@@ -152,6 +153,11 @@ hsk.start(callback=processor.basicHandler)
 # need to call the startup handler once, but it can except
 try:
     startup.run()
+except StartupException as e:
+    logger.error(f'Startup failed, force reprogram: {repr(e)}')
+    if currentFw.exists():
+        currentFw.unlink()
+    handler.set_terminate()
 except Exception as e:
     import traceback
             
@@ -173,6 +179,11 @@ while not handler.terminate:
         logger.trace("processing %s", callback)
         try:
             callback(key.fileobj, mask)
+        except StartupException as e:
+            logger.error("Startup exception, force reprogram: {repr(e)}")
+            if currentFw.exists():
+                currentFw.unlink()
+            handler.set_terminate()            
         except Exception as e:
             import traceback
             
@@ -234,7 +245,8 @@ if processor.restartCode:
     if code & processor.bmMagicValue:
         code = code ^ processor.bmMagicValue        
     elif code & processor.bmForceReprogram:
-        os.unlink(zynq.CURRENT)
+        if currentFw.exists():
+            currentFw.unlink()
         code = code ^ processor.bmForceReprogram
     exit(code)
 exit(0)

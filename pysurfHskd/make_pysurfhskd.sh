@@ -9,6 +9,7 @@ MAIN_FILE="testStartup.py"
 AUX_FILES="pueoTimer.py \
 	   pyHskHandler.py \
 	   HskProcessor.py \
+	   surfExceptions.py \
            surfStartupHandler.py"
 
 if [ "$#" -ne 1 ] ; then

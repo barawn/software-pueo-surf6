@@ -2,6 +2,7 @@ from enum import Enum
 import logging
 import os
 from pueo.common.bf import bf
+from surfExceptions import StartupException
 
 # the startup handler actually runs in the main
 # thread. it either writes a byte to a pipe to
@@ -81,9 +82,7 @@ class StartupHandler:
             id = self.surf.read(0).to_bytes(4,'big')
             if id != b'SURF':
                 self.logger.error("failed identifying SURF: %s", id.hex())
-                self.state = self.StartupState.STARTUP_FAILURE
-                self._runNextTick()
-                return
+                raise StartupException("firmware identify error")
             else:
                 dv = self.surf.DateVersion(self.surf.read(0x4))
                 self.logger.info("this is SURF %s", str(dv))

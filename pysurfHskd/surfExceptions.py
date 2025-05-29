@@ -1,0 +1,3 @@
+class StartupException(Exception):
+    pass
+
