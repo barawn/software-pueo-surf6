@@ -341,8 +341,8 @@ if __name__ == "__main__":
                                     except TimeoutExpired:
                                         p.kill()
                                         out = p.communicate()[0]
-                                    for l in out.split('\n'):
-                                        logger.file(l)
+                                    for l in out.split(b'\n'):
+                                        logger.file(l.decode())
                                 else:
                                     raise ValueError(f'md5sum failed: {themd5} != {curFile[0]}')
                             # and get a new one
