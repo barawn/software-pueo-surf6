@@ -172,14 +172,15 @@ class StartupHandler:
                 self._runNextTick()
                 return
             self.state = self.StartupState.LOCATE_EYE
-            self._runImmediate()
+            # I think we want to give a bit of a pause here??
+            self._runNextTick()
             return
         elif self.state == self.StartupState.LOCATE_EYE:
             # use firmware parameters for this eventually!!!
             try:
                 delay, bit = self.surf.locate_eyecenter()
             except Exception as e:
-                surf.logger.error(f'Locating eye center failed! {repr(e)}')
+                self.logger.error(f'Locating eye center failed! {repr(e)}')
                 self.state = self.StartupState.STARTUP_FAILURE
                 self._runNextTick()
                 return
