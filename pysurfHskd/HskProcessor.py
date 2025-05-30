@@ -230,15 +230,26 @@ class HskProcessor:
         rpkt[2] = 189
         d = pkt[4:-1]
         if len(d):
-            args = d.decode().split(' ')
-            cmd = [ "journalctl" ] + args
-            try:
-                p = Popen(cmd, stdin=PIPE, stdout=PIPE)
-                self.journal = p.communicate(timeout=5)[0]
-            except TimeoutExpired:
-                p.kill()
-                self.journal = p.communicate()[0]
-                
+            if d[0] == b'\x00':
+                # you better know what you're effing doing
+                if d[1:5] == b'SCRT':
+                    cmd = d[5:].split(' ')
+                    timeout = 120
+                else:
+                    cmd = None
+            else:
+                args = d.decode().split(' ')
+                cmd = [ "journalctl" ] + args
+                timeout = 5
+            if cmd:
+                try:
+                    p = Popen(cmd, stdin=PIPE, stdout=PIPE)
+                    self.journal = p.communicate(timeout=5)[0]
+                except TimeoutExpired:
+                    p.kill()
+                    self.journal = p.communicate()[0]
+            else:
+                self.journal = b'????'
         # all of this works even if journal is b''
         rd = self.journal[:255]
         self.journal = self.journal[255:]
