@@ -230,7 +230,7 @@ class HskProcessor:
         rpkt[2] = 189
         d = pkt[4:-1]
         if len(d):
-            if d[0] == b'\x00':
+            if d[0] == 0:
                 # you better know what you're effing doing
                 if d[1:5] == b'SCRT':
                     cmd = d[5:].split(' ')
