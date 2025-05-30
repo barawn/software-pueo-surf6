@@ -233,7 +233,7 @@ class HskProcessor:
             if d[0] == 0:
                 # you better know what you're effing doing
                 if d[1:5] == b'SCRT':
-                    cmd = d[5:].split(' ')
+                    cmd = d[5:].decode().split(' ')
                     timeout = 120
                 else:
                     cmd = None
