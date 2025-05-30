@@ -240,6 +240,7 @@ processor.stop()
 # 0xFF: kReboot
 # note that eRestart checks if bit 7 is set: if it is,
 # and the value is not one of kTerminate or kReboot, it is IGNORED.
+code = 0
 if processor.restartCode:
     code = processor.restartCode
     if code & processor.bmMagicValue:
@@ -248,5 +249,5 @@ if processor.restartCode:
         if currentFw.exists():
             currentFw.unlink()
         code = code ^ processor.bmForceReprogram
-    exit(code)
-exit(0)
+
+exit(code)
