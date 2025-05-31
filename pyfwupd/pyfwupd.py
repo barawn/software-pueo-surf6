@@ -194,12 +194,12 @@ if __name__ == "__main__":
     
     # we always write our length, it's constant
     lenPath.write_text(str(FRAMELEN))
-    stateA = [30, gpioA, str(bankA), None]
-    stateB = [31, gpioB, str(bankB), None]
+    stateA = [30, gpioA, str(bankA)]
+    stateB = [31, gpioB, str(bankB)]
     logger.debug("stateA is %d (%s)" % (stateA[0], stateA[2]))
     logger.debug("stateB is %d (%s)" % (stateB[0], stateB[2]))
-    stateA[3] = stateB
-    stateB[3] = stateA
+    stateA.append(stateB)
+    stateB.append(stateA)
 
     # start up with bank A mode
     # whenever you enter eDownloadMode you need to start with MARK_A
