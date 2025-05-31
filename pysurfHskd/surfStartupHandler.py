@@ -225,7 +225,7 @@ class StartupHandler:
             self._runImmediate()
             return
         elif self.state == self.StartupState.WAIT_SYNC:
-            if not self.sync_seen:
+            if not self.surf.sync_seen:
                 self._runImmediate()
                 return
             self.logger.info("SYNC has been issued.")
