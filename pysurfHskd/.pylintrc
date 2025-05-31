@@ -1,0 +1,1 @@
+ignored-modules=pueo.common.bf,signalhandler,pysoceeprom,pyzynqmp,pueo.surf,pueo.common.wbspi,pueo.common.bf,s6clk,gpio
