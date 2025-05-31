@@ -198,7 +198,7 @@ class HskProcessor:
                 self.logger.error("%s is a broken symlink! Deleting it!!",
                                   self.zynq.NEXT)
                 self.nextFw.unlink()
-            else if self.nextFw.exists():
+            elif self.nextFw.exists():
                 self.logger.error("%s is not a link! Deleting it!!",
                                   self.zynq.NEXT)
                 self.nextFw.unlink()
