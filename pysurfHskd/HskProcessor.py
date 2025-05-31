@@ -238,7 +238,7 @@ class HskProcessor:
                 # you better know what you're effing doing
                 if d[1:5] == b'SCRT':
                     scmd = d[5:].lstrip(b' ').decode()
-                    if len(cmd):
+                    if len(scmd):
                         cmd = scmd.split(' ')
                     else:
                         cmd = None
