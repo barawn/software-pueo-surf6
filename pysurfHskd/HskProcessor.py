@@ -94,6 +94,7 @@ class HskProcessor:
         self.hsk.sendPacket(rpkt)
 
     def eSleep(self, pkt):
+        rpkt = bytearray(6)
         rpkt[1] = pkt[0]
         rpkt[0] = self.hsk.myID
         rpkt[2] = 33
