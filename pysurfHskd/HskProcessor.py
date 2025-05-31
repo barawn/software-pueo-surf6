@@ -134,7 +134,7 @@ class HskProcessor:
             fn = pkt[4:-1]
             fp = Path(fn.decode())
             if fn[0] == 0:
-                if self.nextSoft.exists():
+                if os.path.lexists(self.nextSoft):
                     self.nextSoft.unlink()
             else:
                 # want to set it, so do sanity check
@@ -148,7 +148,7 @@ class HskProcessor:
                     self.hsk.sendPacket(rpkt)
                     return
                 # replace the link
-                if self.nextSoft.exists():
+                if os.path.lexists(self.nextSoft):
                     self.nextSoft.unlink()
                 self.nextSoft.symlink_to(fp)
                 linkname = fn
@@ -180,7 +180,7 @@ class HskProcessor:
             fn = pkt[4:-1]
             fp = Path(fn.decode())
             if fn[0] == 0:
-                if self.nextFw.exists():
+                if os.path.lexists(self.nextFw):
                     self.nextFw.unlink()
             elif not fp.is_file():
                 rpkt[2] = 255
@@ -189,12 +189,16 @@ class HskProcessor:
                 self.hsk.sendPacket(rpkt)
                 return
             else:
-                if self.nextFw.exists():
+                if os.path.lexists(self.nextFw):
                     self.nextFw.unlink()
                 self.nextFw.symlink_to(fp)
         rpkt[2] = 129        
         if not self.nextFw.exists() or not self.nextFw.is_symlink():
-            if self.nextFw.exists():
+            if os.path.lexists(self.nextFw):
+                self.logger.error("%s is a broken symlink! Deleting it!!",
+                                  self.zynq.NEXT)
+                self.nextFw.unlink()
+            else if self.nextFw.exists():
                 self.logger.error("%s is not a link! Deleting it!!",
                                   self.zynq.NEXT)
                 self.nextFw.unlink()
