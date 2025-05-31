@@ -392,7 +392,7 @@ if __name__ == "__main__":
         os.unlink(TMPPATH)
                 
     if horribleProblem:
-        logger.error("terminating with horrible error %d" % horribleProblem)
+        logger.error(f'terminating with horrible error {horribleProblem}')
         exit(horribleProblem)
     else:
         logger.info("terminating normally")
