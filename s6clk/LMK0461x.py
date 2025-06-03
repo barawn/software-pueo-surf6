@@ -104,6 +104,13 @@ class LMK0461x(spi.SPI):
             if st & 0x1:
                 print(" - PLL1_LCK_DET: PLL1 Lock Detect")
         return st
+
+    def sync(self, verbose=False):
+        """ software sync """
+        r = self.readRegister(0x14)
+        w = r | 0x1
+        self.writeRegister(0x14, w)
+        self.writeRegister(0x14, r)        
     
     def configure(self, ticsFilename):
         registers = []
