@@ -17,6 +17,23 @@ from pathlib import Path
 from collections import defaultdict
 
 class SURF6Clock:
+    # 5 is intentionally left off here, it cannot
+    # be shut down!!
+    lmk_map = {
+        # MGT Clock (shut down for now)
+        'MGT' : 1,
+        # External clock input for Trenz clock (shut down)
+        'EXT' : 2,
+        # System clock
+        'SYSCLK' : 3,
+        # ADC clock
+        'ADCCLK' : 4,
+        # Sysref (can be shut down after MTS)
+        'SYSREF' : 5,
+        # PL Sysref (can be shut down after MTS)
+        'PLSYSREF' : 6
+    }
+    
     class Revision(Enum):
         REVA = 'Rev A'
         REVB = 'Rev B/C'
