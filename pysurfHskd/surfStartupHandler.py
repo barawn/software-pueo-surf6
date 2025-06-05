@@ -288,8 +288,9 @@ class StartupHandler:
             # must be reftile = 1 due to clock distribution
             self.surf.rfdc.MultiConverter_Init(self.surf.rfdc.ConverterType.ADC,
                                                refTile=1)
-            self.surf.rfdc.mtsAdcConfig.target_latency = self.mts.target_latency
-            self.surf.rfdc.mtsAdcConfig.sysref_enable = self.mts.sysref_enable
+            self.surf.rfdc.mtsAdcConfig.Tiles = 0b1111
+            self.surf.rfdc.mtsAdcConfig.Target_Latency = self.mts.target_latency
+            self.surf.rfdc.mtsAdcConfig.SysRef_Enable = self.mts.sysref_enable
             r = self.surf.rfdc.MultiConverter_Sync(self.surf.rfdc.ConverterType.ADC)
             if r == 0:
                 self.logger.info("MTS succeeded:")
