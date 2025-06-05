@@ -172,6 +172,95 @@ class HskProcessor:
         rpkt.append(cks)
         self.hsk.sendPacket(rpkt)                    
 
+    def eFwParams(self, pkt):
+        # right now we have 2 types of fwparams
+        # type 0 : align data
+        #          - rx_delay (int32 in picoseconds)
+        #          - cin_delay (int32 in picoseconds)
+        #          - cin_bit (byte)
+        #          ----> total length = 9
+        # An invalid field is -1 or 0xFFFFFFFF (or 0xFF for cin_bit)
+        # e.g. 
+        # type 1 : MTS data. Different btwn write and read.
+        #          - target latency (int) - read/write
+        #          - sysref enable (byte) - read/write
+        #          - latency 0 (int) - read
+        #          - latency 1 (int) - read
+        #          - latency 2 (int) - read
+        #          - latency 3 (int) - read
+        # write length = 5 bytes
+        # read length = 21 bytes
+        rpkt = bytearray(4)
+        rpkt[1] = pkt[0]
+        rpkt[0] = self.hsk.myID
+        d = pkt[4:-1]
+        error = False
+        if not len(d):
+            error = True
+        ptype = d[0]
+        d = d[1:]
+        if len(d):
+            if ptype == 0:
+                if len(d) < 9:
+                    error = True
+                else:
+                    rx_delay = int.from_bytes(d[0:4],byteorder='big',signed=True)
+                    cin_delay = int.from_bytes(d[4:8],byteorder='big',signed=True)
+                    cin_bit = int.from_bytes(d[8:8],byteorder='big',signed=True)
+                    if rx_delay > 0:
+                        self.startup.align.rx_delay = rx_delay/1000.
+                    if cin_delay > 0:
+                        self.startup.align.cin_delay = cin_delay/1000.
+                    if cin_byte > 0:
+                        self.startup.align.cin_bit = cin_bit
+            elif ptype == 1:
+                if len(d) < 5:
+                    error = True
+                else:
+                    tlat = int.from_bytes(d[0:4],byteorder='big',signed=True)
+                    sysr = int.from_bytes(d[4:4],byteorder='big',signed=True)
+                    if tlat > 0:
+                        self.startup.mts.target_latency = tlat
+                    if sysr > 0:
+                        self.startup.mts.sysref_enable = sysr                        
+            else:
+                 error = True
+        if error:
+            rpkt[2] = 255
+            rpkt[3] = 0
+            rpkt.append(0)
+            self.hsk.sendPacket(rpkt)
+        else:
+            rpkt[2] = 128
+            if ptype == 0:
+                rpkt[3] = 9
+                if self.startup.align.rx_delay:
+                    rpkt.append(round(self.startup.align.rx_delay*1000).to_bytes(4,byteorder='big'))
+                else:
+                    rpkt.append(b'\xff\xff\xff\xff')
+                if self.startup.align.cin_delay:
+                    rpkt.append(round(self.startup.align.cin_delay*1000).to_bytes(4,byteorder='big'))
+                else:
+                    rpkt.append(b'\xff\xff\xff\xff')
+                if self.startup.align.cin_bit:
+                    rpkt.append(self.startup.align.cin_bit.to_bytes(1,byteorder='big'))
+                else:
+                    rpkt.append(b'\xff')
+            elif ptype == 1:
+                rpkt[3] = 21
+                rpkt.append(self.startup.mts.target_latency.to_bytes(4, byteorder='big'), signed=True)
+                rpkt.append(self.startup.mts.sysref_enable.to_bytes(1,byteorder='big'))
+                if self.startup.mts.latency:
+                    for i in range(4):
+                        rpkt.append(self.startup.mts.latency.to_bytes(4, byteorder='big'))
+                else:
+                    rpkt.append(b'\x00'*16)
+            cks = (256 - sum(rpkt[4:])) & 0xFF
+            rpkt.append(cks)
+            self.hsk.sendPacket(rpkt)
+        return
+                
+        
     # so much more error checking
     def eFwNext(self, pkt):
         rpkt = bytearray(4)
@@ -315,6 +404,7 @@ class HskProcessor:
             18 : self.eIdentify,
             32 : self.eStartState,
             33 : self.eSleep,
+            128 : self.eFwParams,
             129 : self.eFwNext,
             135 : self.eSoftNext,
             189 : self.eJournal,
