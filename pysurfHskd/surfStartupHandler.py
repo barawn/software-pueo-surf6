@@ -20,9 +20,9 @@ class StartupHandler:
     class MultiTileSync:
         t1_codes : None
         pll_codes : None
+        latency : None
         target_latency : int = -1
         sysref_enable : int = 0
-        latency : None
 
     @dataclass
     class Align:
