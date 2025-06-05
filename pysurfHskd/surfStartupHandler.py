@@ -315,6 +315,11 @@ class StartupHandler:
             self.clock.surfClock.en_buf_clk_top = False
             self.clock.surfClock.en_buf_sync_top = False
             self.clock.surfClock.en_buf_sync_bottom = False
+            # and shut the DAC down.
+            # I could do this through their tools!
+            # But I'm not going to!            
+            self.surf.rfdc.dev.write(0x4008, 0x3)
+            self.surf.rfdc.dev.write(0x4004, 0x1)
             self.state = self.StartupState.STARTUP_FINISH
             self._runNextTick()
             return
