@@ -3,6 +3,7 @@ import logging
 import os
 from pueo.common.bf import bf
 from surfExceptions import StartupException
+from dataclasses import dataclass
 
 # the startup handler actually runs in the main
 # thread. it either writes a byte to a pipe to
@@ -14,6 +15,20 @@ from surfExceptions import StartupException
 # god this thing is a headache
 class StartupHandler:
     LMK_FILE = "/usr/local/share/SURF6_LMK.txt"
+
+    @dataclass
+    class MultiTileSync:
+        t1_codes : None
+        pll_codes : None
+        target_latency : int = -1
+        sysref_enable : int = 0
+        latency : None
+
+    @dataclass
+    class Align:
+        rx_delay : float = None
+        cin_delay : float = None
+        cin_bit : int = None
         
     class StartupState(int, Enum):
         STARTUP_BEGIN = 0
@@ -32,6 +47,9 @@ class StartupHandler:
         ENABLE_TRAIN = 13
         WAIT_LIVE = 14
         WAIT_SYNC = 15
+        MTS_STARTUP = 16
+        RUN_MTS = 17
+        MTS_SHUTDOWN = 18
         STARTUP_FINISH = 254
         STARTUP_FAILURE = 255
 
@@ -53,6 +71,14 @@ class StartupHandler:
         self.endState = autoHaltState        
         self.tick = tickFifo
         self.rfd, self.wfd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+
+        self.mts = MultiTileSync( t1_codes=None,
+                                  pll_codes=None,
+                                  target_latency = -1,
+                                  sysref_enable = 0,
+                                  latency=None )
+        self.align = Align()
+                            
         if self.endState is None:
             self.endState = self.StartupState.STARTUP_BEGIN
 
@@ -134,6 +160,19 @@ class StartupHandler:
                 return
             else:
                 self.logger.info("ACLK is ready.")
+                # shut down unused clocks
+                self.clock.surfClock.driveClock(self.clock.lmk_map['MGT'],
+                                               self.clock.surfClock.DriveMode.POWERDOWN)
+                self.clock.surfClock.driveClock(self.clock.lmk_map['EXT'],
+                                               self.clock.surfClock.DriveMode.POWERDOWN)
+                self.clock.surfClock.clockDividerEnable(self.clock.lmk_map['MGT'], False)
+                self.clock.surfClock.clockDividerEnable(self.clock.lmk_map['EXT'], False)
+                # feedback's output can be turned off
+                self.clock.surfClock.driveClock(5, self.clock.surfClock.DriveMode.POWERDOWN)
+                # issue SYNC. The turnaround time
+                # on being called will be long enough so
+                # no wait needed.
+                self.clock.surfClock.sync()
                 self.state = self.StartupState.ENABLE_ACLK
                 self._runImmediate()
                 return
@@ -158,10 +197,10 @@ class StartupHandler:
             self._runImmediate()
             return
         elif self.state == self.StartupState.ALIGN_RXCLK:
-            # use firmware parameters for this eventually!!!
-            # this needs to freaking do something if it fails!!
-            av = self.surf.align_rxclk()
-            self.logger.info("RXCLK aligned at offset %f", av)
+            if self.align.rx_delay:
+                self.logger.info(f'Applying RXCLK alignment {self.align.rx_delay}')
+            self.align.rx_delay = self.surf.align_rxclk(userSkew=self.align.rx_delay)
+            self.logger.info(f'RXCLK aligned at offset {self.align.rx_delay}')
             # reset the active indicator
             self.surf.turfio_cin_active = 0
             self.state = self.StartupState.WAIT_CIN_ACTIVE
@@ -176,17 +215,21 @@ class StartupHandler:
             self._runNextTick()
             return
         elif self.state == self.StartupState.LOCATE_EYE:
-            # use firmware parameters for this eventually!!!
-            try:
-                delay, bit = self.surf.locate_eyecenter()
-            except Exception as e:
-                self.logger.error(f'Locating eye center failed! {repr(e)}')
-                self.state = self.StartupState.STARTUP_FAILURE
-                self._runNextTick()
-                return
-            self.logger.info("Located CIN eye at %f bit %d", delay, bit)
-            self.surf.setDelay(delay)
-            self.surf.turfioSetOffset(bit)
+            if self.align.cin_delay is None:
+                try:
+                    delay, bit = self.surf.locate_eyecenter()
+                except Exception as e:
+                    self.logger.error(f'Locating eye center failed! {repr(e)}')
+                    self.state = self.StartupState.STARTUP_FAILURE
+                    self._runNextTick()
+                    return
+                self.align.cin_delay = delay
+                self.align.cin_bit = bit
+                self.logger.info("Located CIN eye at %f bit %d", delay, bit)
+            else:
+                self.logger.info(f'Using CIN eye: {self.align.cin_delay} bit {self.align.cin_bit}')
+            self.surf.setDelay(self.align.cin_delay)
+            self.surf.turfioSetOffset(self.align.cin_bit)
             self.state = self.StartupState.TURFIO_LOCK
             self._runImmediate()
             return
@@ -229,7 +272,48 @@ class StartupHandler:
                 self._runImmediate()
                 return
             self.logger.info("SYNC has been issued.")
-            # FINISH FOR NOW
+            self.state = self.StartupState.MTS_STARTUP
+            self._runNextTick()
+            return
+        elif self.state == self.StartupState.MTS_STARTUP:
+            self.clock.surfClock.driveClock(self.clock.lmk_map['SYSREF'],
+                                            self.clock.surfClock.DriveMode.HSDS_8)
+            self.clock.surfClock.driveClock(self.clock.lmk_map['PLSYSREF'],
+                                            self.clock.surfClock.DriveMode.HSDS_8)
+            # give it a sec
+            self._runNextTick()
+            return
+        elif self.state == self.StartupState.RUN_MTS:
+            # must be reftile = 1 due to clock distribution
+            self.surf.rfdc.MultiConverter_Init(self.surf.rfdc.ConverterType.ADC,
+                                               refTile=1)
+            self.surf.rfdc.mtsAdcConfig.target_latency = self.mts.target_latency
+            self.surf.rfdc.mtsAdcConfig.sysref_enable = self.mts.sysref_enable
+            r = self.surf.rfdc.MultiConverter_Sync(self.surf.rfdc.ConverterType.ADC)
+            if r == 0:
+                self.logger.info("MTS succeeded:")
+                self.mts.latency = [ 0, 0, 0, 0 ]
+                self.mts.latency[0] = self.surf.rfdc.mtsAdcConfig.Latency[0]
+                self.mts.latency[1] = self.surf.rfdc.mtsAdcConfig.Latency[1]
+                self.mts.latency[2] = self.surf.rfdc.mtsAdcConfig.Latency[2]
+                self.mts.latency[3] = self.surf.rfdc.mtsAdcConfig.Latency[3]
+                self.state = self.StartupState.MTS_SHUTDOWN
+            else:
+                self.logger.info("MTS failed?!?")
+                self.state = self.StartupState.STARTUP_FAILURE
+            self._runImmediate()
+            return
+        elif self.state == self.StartupState.MTS_SHUTDOWN:
+            self.clock.surfClock.driveClock(self.clock.lmk_map['SYSREF'],
+                                            self.clock.surfClock.DriveMode.POWERDOWN)
+            self.clock.surfClock.driveClock(self.clock.lmk_map['PLSYSREF'],
+                                            self.clock.surfClock.DriveMode.POWERDOWN)
+            # 7/8 have a common clkdiv
+            self.clock.surfClock.clockDividerEnable(self.clock.lmk_map['SYSREF'], False)
+            # shut it all down, folks
+            self.clock.surfClock.en_buf_clk_top = False
+            self.clock.surfClock.en_buf_sync_top = False
+            self.clock.surfClock.en_buf_sync_bottom = False
             self.state = self.StartupState.STARTUP_FINISH
             self._runNextTick()
             return
