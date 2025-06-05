@@ -298,6 +298,8 @@ class StartupHandler:
                 self.mts.latency[1] = self.surf.rfdc.mtsAdcConfig.Latency[1]
                 self.mts.latency[2] = self.surf.rfdc.mtsAdcConfig.Latency[2]
                 self.mts.latency[3] = self.surf.rfdc.mtsAdcConfig.Latency[3]
+                for i in range(4):
+                    self.logger.info(f'Tile {i} latency: {self.mts.latency[i]}')
                 self.state = self.StartupState.MTS_SHUTDOWN
             else:
                 self.logger.info("MTS failed?!?")
