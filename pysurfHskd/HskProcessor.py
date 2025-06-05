@@ -235,26 +235,26 @@ class HskProcessor:
             if ptype == 0:
                 rpkt[3] = 9
                 if self.startup.align.rx_delay:
-                    rpkt.append(round(self.startup.align.rx_delay*1000).to_bytes(4,byteorder='big'))
+                    rpkt += round(self.startup.align.rx_delay*1000).to_bytes(4,byteorder='big')
                 else:
-                    rpkt.append(b'\xff\xff\xff\xff')
+                    rpkt += b'\xff\xff\xff\xff'
                 if self.startup.align.cin_delay:
-                    rpkt.append(round(self.startup.align.cin_delay*1000).to_bytes(4,byteorder='big'))
+                    rpkt += round(self.startup.align.cin_delay*1000).to_bytes(4,byteorder='big')
                 else:
-                    rpkt.append(b'\xff\xff\xff\xff')
+                    rpkt += b'\xff\xff\xff\xff'
                 if self.startup.align.cin_bit:
-                    rpkt.append(self.startup.align.cin_bit.to_bytes(1,byteorder='big'))
+                    rpkt += self.startup.align.cin_bit.to_bytes(1,byteorder='big')
                 else:
-                    rpkt.append(b'\xff')
+                    rpkt += b'\xff'
             elif ptype == 1:
                 rpkt[3] = 21
-                rpkt.append(self.startup.mts.target_latency.to_bytes(4, byteorder='big'), signed=True)
-                rpkt.append(self.startup.mts.sysref_enable.to_bytes(1,byteorder='big'))
+                rpkt += self.startup.mts.target_latency.to_bytes(4, byteorder='big', signed=True)
+                rpkt += self.startup.mts.sysref_enable.to_bytes(1,byteorder='big')
                 if self.startup.mts.latency:
                     for i in range(4):
-                        rpkt.append(self.startup.mts.latency.to_bytes(4, byteorder='big'))
+                        rpkt += self.startup.mts.latency.to_bytes(4, byteorder='big')
                 else:
-                    rpkt.append(b'\x00'*16)
+                    rpkt += b'\xff'*16
             cks = (256 - sum(rpkt[4:])) & 0xFF
             rpkt.append(cks)
             self.hsk.sendPacket(rpkt)
