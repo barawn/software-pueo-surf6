@@ -211,7 +211,7 @@ class HskProcessor:
                         self.startup.align.rx_delay = rx_delay/1000.
                     if cin_delay > 0:
                         self.startup.align.cin_delay = cin_delay/1000.
-                    if cin_byte > 0:
+                    if cin_bit > 0:
                         self.startup.align.cin_bit = cin_bit
             elif ptype == 1:
                 if len(d) < 5:
