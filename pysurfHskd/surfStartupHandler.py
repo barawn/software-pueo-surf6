@@ -72,12 +72,12 @@ class StartupHandler:
         self.tick = tickFifo
         self.rfd, self.wfd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
 
-        self.mts = MultiTileSync( t1_codes=None,
-                                  pll_codes=None,
-                                  target_latency = -1,
-                                  sysref_enable = 0,
-                                  latency=None )
-        self.align = Align()
+        self.mts = self.MultiTileSync( t1_codes=None,
+                                       pll_codes=None,
+                                       target_latency = -1,
+                                       sysref_enable = 0,
+                                       latency=None )
+        self.align = self.Align()
                             
         if self.endState is None:
             self.endState = self.StartupState.STARTUP_BEGIN
