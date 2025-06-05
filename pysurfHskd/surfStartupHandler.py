@@ -280,6 +280,7 @@ class StartupHandler:
                                             self.clock.surfClock.DriveMode.HSDS_8)
             self.clock.surfClock.driveClock(self.clock.lmk_map['PLSYSREF'],
                                             self.clock.surfClock.DriveMode.HSDS_8)
+            state = self.StartupState.RUN_MTS
             # give it a sec
             self._runNextTick()
             return
