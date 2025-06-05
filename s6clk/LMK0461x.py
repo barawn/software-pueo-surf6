@@ -129,8 +129,7 @@ class LMK0461x(spi.SPI):
             maskTop = 0
         mask = maskBot | maskTop
         if verbose:
-            print("writing drive %2.2x to reg %2.2x %2.2x mask %2.2x" % 
-                  ( drive.value, regTop, regBot, mask))
+            print(f'writing drive {hex(drive.value)} to {hex(reg)} mask {hex(mask)}')            
         oldVal = self.readRegister(reg)
         newVal = (oldVal & mask) | (drive.value << startBit)
         if verbose:
