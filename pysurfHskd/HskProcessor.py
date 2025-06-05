@@ -252,7 +252,7 @@ class HskProcessor:
                 rpkt += self.startup.mts.sysref_enable.to_bytes(1,byteorder='big')
                 if self.startup.mts.latency:
                     for i in range(4):
-                        rpkt += self.startup.mts.latency.to_bytes(4, byteorder='big')
+                        rpkt += self.startup.mts.latency[i].to_bytes(4, byteorder='big')
                 else:
                     rpkt += b'\xff'*16
             cks = (256 - sum(rpkt[4:])) & 0xFF
