@@ -13,7 +13,7 @@ class LMK0461x(spi.SPI):
         HSDS_6 = 20
         HSDS_8 = 24
         HCSL_8 = 59
-        HCSL_16 = 63
+        HCSL_16 = 63        
 
     # all the drive modes are 6 bits, but where they start is goofy
     clockDriveMap = { 1 : [ 0x34, 2 ],
@@ -26,7 +26,19 @@ class LMK0461x(spi.SPI):
                       8:  [ 0x3E, 2 ],
                       9:  [ 0x40, 2 ],
                       10: [ 0x41, 0 ] }
-        
+
+    # dividers are all bit 0 but in different registers
+    clkDivEnMap = {   1 : 0x34,
+                      2 : 0x36,
+                      3 : 0x38,
+                      4 : 0x38,
+                      5 : 0x3A,
+                      6 : 0x3C,
+                      7 : 0x3E,
+                      8 : 0x3E,
+                      9 : 0x40,
+                      10 : 0x42 }
+    
     def __init__(self, path='/dev/spidev1.0'):
         super().__init__(path)
         self.mode = self.MODE_0
@@ -54,8 +66,56 @@ class LMK0461x(spi.SPI):
                   ( type, id, ver ))
         fullId = [ type, id, ver ]
         return fullId
-    
+
+    @property
+    def en_buf_clk_top(self):
+        return (self.readRegister(0x6E) >> 1) & 0x1
+
+    @en_buf_clk_top.setter
+    def en_buf_clk_top(self, value):
+        r = self.readRegister(0x6E) & 0xFD
+        r |= 0x2 if value else 0x0
+        self.writeRegister(0x6E, r)
+
+    @property
+    def en_buf_clk_bottom(self):
+        return self.readRegister(0x6E) & 0x1
+
+    @en_buf_clk_bottom.setter
+    def en_buf_clk_bottom(self, value):
+        r = self.readRegister(0x6E) & 0xFE
+        r |= 0x1 if value else 0x0
+        self.writeRegister(0x6E, r)
+
+    @property
+    def en_buf_sync_top(self):
+        return (self.readRegister(0x6E) >> 4) & 0x1
+
+    @en_buf_sync_top.setter
+    def en_buf_sync_top(self, value):
+        r = self.readRegister(0x6E) & 0xEF
+        r |= 0x1 if value else 0
+        self.writeRegister(0x6E, r)
+
+    @property
+    def en_buf_sync_bottom(self):
+        return (self.readRegister(0x6E) >> 3) & 0x1
+
+    @en_buf_sync_bottom.setter
+    def en_buf_sync_bottom(self, value):
+        r = self.readRegister(0x6E) & 0xF7
+        r |= 0x1 if value else 0
+        self.writeRegister(0x6E, r)        
+        
+    def clockDividerEnable(self, clockNum, value):
+        """ enable or disable a clock divider """
+        reg = self.clkDivEnMap[clockNum]
+        r = self.readRegister(reg) & 0xFE
+        r |= 1 if value else 0
+        self.writeRegister(reg, r)        
+        
     def driveClock(self, clockNum, drive=DriveMode.HSDS_4, verbose=True):
+        """ set the drive of a clock """
         reg = self.clockDriveMap[clockNum][0]
         startBit = self.clockDriveMap[clockNum][1]
         stopBit = startBit + 6
