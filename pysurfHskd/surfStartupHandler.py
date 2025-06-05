@@ -169,10 +169,10 @@ class StartupHandler:
                 self.clock.surfClock.clockDividerEnable(self.clock.lmk_map['EXT'], False)
                 # feedback's output can be turned off
                 self.clock.surfClock.driveClock(5, self.clock.surfClock.DriveMode.POWERDOWN)
-                # issue SYNC. The turnaround time
-                # on being called will be long enough so
-                # no wait needed.
-                self.clock.surfClock.sync()
+                # you do NOT need to issue SYNC. I honestly don't know why, but you don't:
+                # it's probably because they're all part of the SYNC group. This is also
+                # good because if we DID issue sync we'd have to wait for it to lock
+                # AGAIN because syncing blows up the lock.
                 self.state = self.StartupState.ENABLE_ACLK
                 self._runImmediate()
                 return
