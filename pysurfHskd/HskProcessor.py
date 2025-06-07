@@ -193,16 +193,21 @@ class HskProcessor:
         rpkt = bytearray(4)
         rpkt[1] = pkt[0]
         rpkt[0] = self.hsk.myID
+        def error_out():
+            rpkt[2] = 255
+            rpkt[3] = 0
+            rpkt.append(0)
+            self.hsk.sendPacket(rpkt)
+            return
         d = pkt[4:-1]
-        error = False
         if not len(d):
-            error = True
+            error_out()
         ptype = d[0]
         d = d[1:]
         if len(d):
             if ptype == 0:
                 if len(d) < 9:
-                    error = True
+                    error_out()
                 else:
                     rx_delay = int.from_bytes(d[0:4],byteorder='big',signed=True)
                     cin_delay = int.from_bytes(d[4:8],byteorder='big',signed=True)
@@ -215,7 +220,7 @@ class HskProcessor:
                         self.startup.align.cin_bit = cin_bit
             elif ptype == 1:
                 if len(d) < 5:
-                    error = True
+                    error_out()
                 else:
                     tlat = int.from_bytes(d[0:4],byteorder='big',signed=True)
                     sysr = int.from_bytes(d[4:4],byteorder='big',signed=True)
@@ -224,13 +229,9 @@ class HskProcessor:
                     if sysr > 0:
                         self.startup.mts.sysref_enable = sysr                        
             else:
-                 error = True
-        if error:
-            rpkt[2] = 255
-            rpkt[3] = 0
-            rpkt.append(0)
-            self.hsk.sendPacket(rpkt)
-        else:
+                 error_out()
+        # fix this
+        if True:
             rpkt[2] = 128
             if ptype == 0:
                 rpkt[3] = 9
