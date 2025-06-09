@@ -204,8 +204,11 @@ class HskProcessor:
             error_out()
         ptype = d[0]
         d = d[1:]
+        # check to see if this is a write or a read
         if len(d):
+            # write - we were given data
             if ptype == 0:
+                # align params
                 if len(d) < 9:
                     error_out()
                 else:
@@ -219,6 +222,7 @@ class HskProcessor:
                     if cin_bit > 0:
                         self.startup.align.cin_bit = cin_bit
             elif ptype == 1:
+                # mts params
                 if len(d) < 5:
                     error_out()
                 else:
@@ -227,38 +231,33 @@ class HskProcessor:
                     if tlat > 0:
                         self.startup.mts.target_latency = tlat
                     if sysr > 0:
-                        self.startup.mts.sysref_enable = sysr                        
+                        self.startup.mts.sysref_enable = sysr
             else:
                  error_out()
-        # fix this
-        if True:
-            rpkt[2] = 128
-            if ptype == 0:
-                rpkt[3] = 9
-                if self.startup.align.rx_delay:
-                    rpkt += round(self.startup.align.rx_delay*1000).to_bytes(4,byteorder='big')
-                else:
-                    rpkt += b'\xff\xff\xff\xff'
-                if self.startup.align.cin_delay:
-                    rpkt += round(self.startup.align.cin_delay*1000).to_bytes(4,byteorder='big')
-                else:
-                    rpkt += b'\xff\xff\xff\xff'
-                if self.startup.align.cin_bit:
-                    rpkt += self.startup.align.cin_bit.to_bytes(1,byteorder='big')
-                else:
-                    rpkt += b'\xff'
-            elif ptype == 1:
-                rpkt[3] = 21
-                rpkt += self.startup.mts.target_latency.to_bytes(4, byteorder='big', signed=True)
-                rpkt += self.startup.mts.sysref_enable.to_bytes(1,byteorder='big')
-                if self.startup.mts.latency:
-                    for i in range(4):
-                        rpkt += self.startup.mts.latency[i].to_bytes(4, byteorder='big')
-                else:
-                    rpkt += b'\xff'*16
-            cks = (256 - sum(rpkt[4:])) & 0xFF
-            rpkt.append(cks)
-            self.hsk.sendPacket(rpkt)
+        # response always has the current values
+        rpkt[2] = 128
+        if ptype == 0:
+            rpkt[3] = 9
+            rxd = round(self.startup.align.rx_delay*1000) if self.startup.align.rx_delay else -1
+            cind = round(self.startup.align.cin_delay*1000) if self.startup.align.cin_delay else -1
+            cinb = self.startup.align.cin_bit if self.startup.align.cin_bit else -1
+            rpkt += rxd.to_bytes(4, byteorder='big', signed=True)
+            rpkt += cind.to_bytes(4, byteorder='big', signed=True)
+            rpkt += cinb.to_bytes(1, byteorder='big', signed=True)
+        elif ptype == 1:
+            rpkt[3] = 21
+            # these have defaults
+            rpkt += self.startup.mts.target_latency.to_bytes(4, byteorder='big', signed=True)
+            rpkt += self.startup.mts.sysref_enable.to_bytes(1,byteorder='big')
+            # it's just easier to case the whole thing
+            if self.startup.mts.latency:
+                for i in range(4):
+                    rpkt += self.startup.mts.latency[i].to_bytes(4, byteorder='big')
+            else:
+                rpkt += b'\xff'*16
+        cks = (256 - sum(rpkt[4:])) & 0xFF
+        rpkt.append(cks)
+        self.hsk.sendPacket(rpkt)
         return
                 
         
@@ -475,6 +474,20 @@ class HskProcessor:
                 import traceback
                 self.logger.error("exception %s thrown inside housekeeping handler?", repr(e))
                 self.logger.error(traceback.format_exc())
+                # new hotness. we know the packet's okay, we can grab from it.
+                # just hope everything else is OK.
+                # this is why the LAST THING we do is send a response - chances are
+                # if we throw an exception it's a bug in the prep, not the actual sending.
+                rpkt = bytearray(4)
+                rpkt[1] = rpkt[0]
+                rpkt[0] = self.hsk.myID
+                rpkt[2] = 255
+                rr = f'{type(e).__qualname__}:{str(e)}'.encode()                
+                rpkt[3] = len(rr)
+                rpkt.append(rr)
+                cks = (256 - sum(rpkt[4:])) & 0xFF
+                rpkt.append(cks)
+                self.hsk.sendPacket(rpkt)                
                 self.terminate()
         else:
             self.logger.info("ignoring unknown hsk command: %2.2x", cmd)
