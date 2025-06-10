@@ -64,6 +64,7 @@ class StartupHandler:
                  autoHaltState,
                  tickFifo):
         self.state = self.StartupState.STARTUP_BEGIN
+        self.fail_msg = None
         self.logger = logging.getLogger(logName)
         self.surf = surfDev
         self.clock = surfClock
@@ -133,6 +134,7 @@ class StartupHandler:
             if not os.path.exists(self.LMK_FILE):
                 self.logger.error("failed locating %s", self.LMK_FILE)
                 self.state = self.StartupState.STARTUP_FAILURE
+                self.fail_msg = f'Could not find LMK file {self.LMK_FILE}'
                 self._runNextTick()
             self.clockReset.write(1)
             self.clockReset.write(0)
@@ -221,6 +223,7 @@ class StartupHandler:
                 except Exception as e:
                     self.logger.error(f'Locating eye center failed! {repr(e)}')
                     self.state = self.StartupState.STARTUP_FAILURE
+                    self.fail_msg = 'Failed locating CIN eye center'
                     self._runNextTick()
                     return
                 self.align.cin_delay = delay
@@ -305,6 +308,7 @@ class StartupHandler:
             else:
                 self.logger.info("MTS failed?!?")
                 self.state = self.StartupState.STARTUP_FAILURE
+                self.fail_msg = 'MTS failure {r}'
             self._runImmediate()
             return
         elif self.state == self.StartupState.MTS_SHUTDOWN:
