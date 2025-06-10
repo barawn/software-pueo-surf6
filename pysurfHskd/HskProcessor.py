@@ -489,7 +489,7 @@ class HskProcessor:
                 rpkt[2] = 255
                 rr = f'{type(e).__qualname__}:{str(e)}'.encode()                
                 rpkt[3] = len(rr)
-                rpkt.append(rr)
+                rpkt += rr
                 cks = (256 - sum(rpkt[4:])) & 0xFF
                 rpkt.append(cks)
                 self.hsk.sendPacket(rpkt)                
