@@ -29,9 +29,9 @@ class SURF6Clock:
         # ADC clock
         'ADCCLK' : 4,
         # Sysref (can be shut down after MTS)
-        'SYSREF' : 5,
+        'SYSREF' : 6,
         # PL Sysref (can be shut down after MTS)
-        'PLSYSREF' : 6
+        'PLSYSREF' : 7
     }
     
     class Revision(Enum):
