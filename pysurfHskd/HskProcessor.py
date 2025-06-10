@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from subprocess import Popen, PIPE, TimeoutExpired
 from pathlib import Path
 import pickle
@@ -492,7 +493,8 @@ class HskProcessor:
                 rpkt += rr
                 cks = (256 - sum(rpkt[4:])) & 0xFF
                 rpkt.append(cks)
-                self.hsk.sendPacket(rpkt)                
+                self.hsk.sendPacket(rpkt)
+                time.sleep(0.2)
                 self.terminate()
         else:
             self.logger.info("ignoring unknown hsk command: %2.2x", cmd)
