@@ -95,7 +95,9 @@ class HskProcessor:
         rpkt[4] = self.startup.state
         rpkt[5] = self.startup.endState
         if rpkt[4] == 255 and self.startup.fail_msg:
-            rpkt += self.startup.fail_msg.encode()
+            msg = self.startup.fail_msg.encode()            
+            rpkt += msg
+            rpkt[3] += len(msg)
         rpkt[6] = (256 - sum(rpkt[4:])) & 0xFF
         self.hsk.sendPacket(rpkt)
 
