@@ -195,6 +195,8 @@ class StartupHandler:
             if not rv[14]:
                 self._runNextTick()
                 return
+            # pull RFdc out of reset now that ACLK is OK
+            self.surf.rfdc_reset = 0
             self.state = self.StartupState.ALIGN_RXCLK
             self._runImmediate()
             return
