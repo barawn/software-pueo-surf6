@@ -83,13 +83,18 @@ class HskProcessor:
     def eStartState(self, pkt):
         if len(pkt) > 5:
             self.startup.endState = pkt[4]
+        # we are always at least 2 data bytes
+        # in return. 
         rpkt = bytearray(7)
         rpkt[1] = pkt[0]
         rpkt[0] = self.hsk.myID
         rpkt[2] = 32
+        
         rpkt[3] = 2
         rpkt[4] = self.startup.state
         rpkt[5] = self.startup.endState
+        if rpkt[4] == 255 and self.startup.fail_msg:
+            rpkt.append(self.startup.fail_msg.encode())
         rpkt[6] = (256 - sum(rpkt[4:])) & 0xFF
         self.hsk.sendPacket(rpkt)
 
