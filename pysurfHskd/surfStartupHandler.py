@@ -314,6 +314,18 @@ class StartupHandler:
             self._runImmediate()
             return
         elif self.state == self.StartupState.MTS_SHUTDOWN:
+            # Allow MTS to rerun. Normally we can't rewind states, but
+            # MTS can freely be rerun. So if this WAS our end state
+            # (e.g. "run MTS but don't shutdown") and then we want to run MTS
+            # *again*, self.endState now becomes *not* this state and
+            # we exit the trap and enter here. This is why NORMALLY
+            # we can't rewind states! But this is kindof our last
+            # thing, so we let this happen. Once we shutdown the SysRef
+            # dividers, we can't run MTS anymore until we reset the clock.
+            if self.endState == self.StartupState.RUN_MTS:
+                self.state = self.StartupState.RUN_MTS
+                self._runNextTick()
+                return
             self.clock.surfClock.driveClock(self.clock.lmk_map['SYSREF'],
                                             self.clock.surfClock.DriveMode.POWERDOWN)
             self.clock.surfClock.driveClock(self.clock.lmk_map['PLSYSREF'],
