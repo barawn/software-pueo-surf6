@@ -51,8 +51,7 @@ ip link set eth0 up
 MACLAST=`cat /sys/class/net/eth0/address | grep -o "[0-9a-f]*$"` #grabs the last part of the mac address
 MACLASTASDEC=`printf "%d" 0x${MACLAST}` # convert to decimal from hex (though the two we care about don't use a-f..)(
 
-#give it an ip. If we were clever we could base it on the mac address so we could have more than SURF up
-# or really we could just have the surfs on a different subnet...
+# set the clever ip, hope we don't put a SURF on the network that conflicts with something else (maybe the SURFs should have their own subnet...)
 ip addr add 10.123.45.${MACLASTASDEC}/24 dev eth0
 
 # routing
