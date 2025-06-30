@@ -24,21 +24,6 @@ autoprog.py pysoceeprom.PySOCEEPROM
 
 trap catch_term SIGTERM
 
-# here's where pysurfHskd would run
-$PYSURFHSKD &
-waitjob=$!
-
-wait $waitjob
-RETVAL=$?
-
-# we need to make sure all services stop
-# to allow the unmount to proceed
-for service in ${CHECK_SERVICES}
-do
-    systemctl stop $service
-done
-
-
 # Even though systemd-networkd is enabled in this image, it's not  apparently used to configure interfaces. ???
 # take everything down, killing the DHCP configured in /etc/network/interfaces
 # who calls that? I have no idea. networking.service is masked so... who knows
@@ -56,6 +41,22 @@ ip addr add 10.123.45.${MACLASTASDEC}/24 dev eth0
 
 # routing
 ip route add default via 10.123.45.1 dev eth0
+
+
+
+# here's where pysurfHskd would run
+$PYSURFHSKD &
+waitjob=$!
+
+wait $waitjob
+RETVAL=$?
+
+# we need to make sure all services stop
+# to allow the unmount to proceed
+for service in ${CHECK_SERVICES}
+do
+    systemctl stop $service
+done
 
 
 
