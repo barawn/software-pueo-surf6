@@ -79,6 +79,7 @@ class StartupHandler:
                                        sysref_enable = 0,
                                        latency=None )
         self.align = self.Align()
+        self.eyeno = None
                             
         if self.endState is None:
             self.endState = self.StartupState.STARTUP_BEGIN
@@ -203,7 +204,8 @@ class StartupHandler:
         elif self.state == self.StartupState.ALIGN_RXCLK:
             if self.align.rx_delay:
                 self.logger.info(f'Applying RXCLK alignment {self.align.rx_delay}')
-            self.align.rx_delay = self.surf.align_rxclk(userSkew=self.align.rx_delay)
+            targetEye = self.eyeno if self.eyeno else 0
+            self.align.rx_delay = self.surf.align_rxclk(userSkew=self.align.rx_delay, eyeNumber=targetEye)
             self.logger.info(f'RXCLK aligned at offset {self.align.rx_delay}')
             # reset the active indicator
             self.surf.turfio_cin_active = 0

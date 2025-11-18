@@ -181,7 +181,7 @@ class HskProcessor:
         self.hsk.sendPacket(rpkt)                    
 
     def eFwParams(self, pkt):
-        # right now we have 2 types of fwparams
+        # right now we have **3** types of fwparams
         # type 0 : align data
         #          - rx_delay (int32 in picoseconds)
         #          - cin_delay (int32 in picoseconds)
@@ -196,6 +196,9 @@ class HskProcessor:
         #          - latency 1 (int) - read
         #          - latency 2 (int) - read
         #          - latency 3 (int) - read
+        # type 2 : Eye choice. This allows us to brute-force
+        #          our way into finding the firmware parameters
+        #          in case something goes horribly wrong.
         # write length = 5 bytes
         # read length = 21 bytes
         rpkt = bytearray(4)
@@ -240,6 +243,14 @@ class HskProcessor:
                         self.startup.mts.target_latency = tlat
                     if sysr > 0:
                         self.startup.mts.sysref_enable = sysr
+            elif ptype == 2:
+                # eye choice
+                if len(d) < 1:
+                    error_out()
+                else:
+                    eyeno = d[0]
+                    if eyeno < 3:
+                        self.startup.eyeno = eyeno
             else:
                  error_out()
         # response always has the current values
@@ -263,6 +274,11 @@ class HskProcessor:
                     rpkt += self.startup.mts.latency[i].to_bytes(4, byteorder='big')
             else:
                 rpkt += b'\xff'*16
+        elif ptype == 2:
+            rpkt[3] = 1
+            eyeno = self.startup.eyeno if self.startup.eyeno else -1
+            rpkt += eyeno.to_bytes(1, byteorder='big', signed=True)
+            
         cks = (256 - sum(rpkt[4:])) & 0xFF
         rpkt.append(cks)
         self.hsk.sendPacket(rpkt)
