@@ -222,8 +222,9 @@ class StartupHandler:
             return
         elif self.state == self.StartupState.LOCATE_EYE:
             if self.align.cin_delay is None:
+                # Seed locating the eye center with the RXCLK shift.
                 try:
-                    delay, bit = self.surf.locate_eyecenter()
+                    delay, bit = self.surf.locate_eyecenter(seed=self.align.rx_delay*1000.0)
                 except Exception as e:
                     self.logger.error(f'Locating eye center failed! {repr(e)}')
                     self.state = self.StartupState.STARTUP_FAILURE
